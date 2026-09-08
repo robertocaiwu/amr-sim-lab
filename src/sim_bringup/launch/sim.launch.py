@@ -45,7 +45,7 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("world", default_value="warehouse"),
         DeclareLaunchArgument("gui", default_value="true"),
         DeclareLaunchArgument("teleop", default_value="false"),
-        DeclareLaunchArgument("robot", default_value="dolly"),
+        DeclareLaunchArgument("robot", default_value="diffbot"),
         SetEnvironmentVariable("GZ_SIM_RESOURCE_PATH",
                                f"{models_path}:{worlds_path}"),
 
