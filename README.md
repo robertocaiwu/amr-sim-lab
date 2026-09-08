@@ -10,8 +10,7 @@ command via Docker or a VS Code devcontainer.
 
 The project is an exploration of procedural scene generation for mobile-robot
 simulation. It is deliberately seamed so that a **Phase 2** port of the same
-ideas to NVIDIA Isaac Sim + OpenUSD + Replicator is a follow-up rather than a
-rewrite.
+ideas to NVIDIA Isaac Sim + OpenUSD + Replicator is a follow-up.
 
 ![demo](docs/images/demo.gif)
 
