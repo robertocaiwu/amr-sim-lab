@@ -1,0 +1,15 @@
+{
+  "name": "amr-sim-lab",
+  "build": { "dockerfile": "../docker/Dockerfile", "context": ".." },
+  "runArgs": ["--net=host", "--gpus", "all", "-e", "DISPLAY"],
+  "mounts": [
+    "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind"
+  ],
+  "workspaceFolder": "/ws",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/ws,type=bind",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "ms-iot.vscode-ros"]
+    }
+  }
+}
