@@ -19,7 +19,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -52,6 +52,13 @@ def generate_launch_description() -> LaunchDescription:
         Node(
             package="ros_gz_sim", executable="gz_sim", output="screen",
             arguments=[[worlds_path, "/", world, ".sdf"], "-r"],
+            condition=IfCondition(gui),
+        ),
+        Node(
+            package="ros_gz_sim", executable="gz_sim", output="screen",
+            arguments=[[worlds_path, "/", world, ".sdf"], "-r", "-s",
+                       "--headless-rendering"],
+            condition=UnlessCondition(gui),
         ),
         Node(
             package="ros_gz_bridge", executable="parameter_bridge",
@@ -85,6 +92,6 @@ def generate_launch_description() -> LaunchDescription:
 # > Note (from task brief, resolve on the ROS box): `ros_gz_sim`'s
 # > launch-friendly entry is normally the included `gz_sim.launch.py`. If
 # > executable="gz_sim" is not resolvable on the ROS box, replace the Gazebo
-# > `Node` with an `IncludeLaunchDescription` of
+# > `Node`(s) with an `IncludeLaunchDescription` of
 # > os.path.join(get_package_share_directory("ros_gz_sim"), "launch",
 # > "gz_sim.launch.py") passing `gz_args`. Confirm in Step 3 and adjust.

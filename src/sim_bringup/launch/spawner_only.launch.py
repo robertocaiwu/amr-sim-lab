@@ -31,14 +31,12 @@ def generate_launch_description() -> LaunchDescription:
     worlds_path = os.path.join(repo_root, "worlds")
 
     world = LaunchConfiguration("world")
-    headless = LaunchConfiguration("headless")
 
     layout_yaml = PathJoinSubstitution([FindPackageShare("sim_bringup"),
                                         "config", "layout.yaml"])
 
     return LaunchDescription([
         DeclareLaunchArgument("world", default_value="warehouse"),
-        DeclareLaunchArgument("headless", default_value="true"),
         SetEnvironmentVariable("GZ_SIM_RESOURCE_PATH",
                                f"{models_path}:{worlds_path}"),
 
@@ -47,7 +45,6 @@ def generate_launch_description() -> LaunchDescription:
             output="screen",
             arguments=[[worlds_path, "/", world, ".sdf"],
                        "-r", "-s", "--headless-rendering"],
-            condition=None,
         ),
         Node(
             package="scene_spawner", executable="spawner_node",
