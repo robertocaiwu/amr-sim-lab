@@ -102,7 +102,8 @@ class SpawnerNode(Node):
         req.entity_factory.sdf = include_spawn_sdf(name, x, y, yaw, model_uri=uri)
         req.entity_factory.allow_renaming = False
         future = self._create_cli.call_async(req)
-        rclpy.spin_until_future_complete(self, future, timeout_sec=5.0)
+        rclpy.spin_until_future_complete(
+            self, future, executor=self.executor, timeout_sec=5.0)
         result = future.result()
         return bool(result and result.success)
 
@@ -111,7 +112,8 @@ class SpawnerNode(Node):
         req.entity.name = name
         req.entity.type = Entity.MODEL
         future = self._remove_cli.call_async(req)
-        rclpy.spin_until_future_complete(self, future, timeout_sec=5.0)
+        rclpy.spin_until_future_complete(
+            self, future, executor=self.executor, timeout_sec=5.0)
         result = future.result()
         return bool(result and result.success)
 
@@ -129,21 +131,22 @@ class SpawnerNode(Node):
                          resp: SpawnLayout.Response) -> SpawnLayout.Response:
         model = req.model_name or str(self.get_parameter("default_model").value)
         uri = f"model://{model}"
-        try:
-            params = self._params_from_request(req)
-        except InvalidArea as exc:
-            resp.success = False
-            resp.message = f"invalid area: {exc}"
-            return resp
+        params = self._params_from_request(req)
 
         if not self._wait_for_create():
             resp.success = False
             resp.message = f"Gazebo create service {self._create_name} unavailable"
             return resp
 
+        try:
+            placements = generate_layout(params, name_prefix=model)
+        except InvalidArea:
+            resp.success = False
+            resp.message = "invalid area bounds"
+            return resp
+
         with self._lock:
             self._clear_locked()
-            placements = generate_layout(params, name_prefix=model)
             names: list[str] = []
             for p in placements:
                 if self._spawn_one(p.name, p.x, p.y, p.yaw, uri):
