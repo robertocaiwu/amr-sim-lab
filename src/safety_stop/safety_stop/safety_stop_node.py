@@ -21,6 +21,7 @@ import math
 import rclpy
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
 
 from safety_stop.gate import apply_gate, obstacle_in_front
@@ -38,7 +39,8 @@ class SafetyStopNode(Node):
         self._last_scan: LaserScan | None = None
         self._last_scan_time = self.get_clock().now()
 
-        self.create_subscription(LaserScan, "/scan", self._on_scan, 10)
+        self.create_subscription(LaserScan, "/scan", self._on_scan,
+                                 qos_profile_sensor_data)
         self.create_subscription(Twist, "/cmd_vel_raw", self._on_cmd, 10)
         self._pub = self.create_publisher(Twist, "/cmd_vel", 10)
 

@@ -59,7 +59,18 @@ def test_obstacle_just_outside_arc_ignored():
 
 
 def test_invalid_returns_ignored():
-    scan = [math.nan, math.inf, -1.0, 999.0] + [10.0] * 177
+    # An invalid value dead ahead (index 90 == bearing 0) must not block.
+    scan = _clear_scan()
+    scan[90] = math.nan
+    assert obstacle_in_front(scan, ANGLE_MIN, ANGLE_INC,
+                             RANGE_MIN, RANGE_MAX, STOP, ARC) is False
+    scan[90] = math.inf
+    assert obstacle_in_front(scan, ANGLE_MIN, ANGLE_INC,
+                             RANGE_MIN, RANGE_MAX, STOP, ARC) is False
+    scan[90] = 0.01   # below range_min
+    assert obstacle_in_front(scan, ANGLE_MIN, ANGLE_INC,
+                             RANGE_MIN, RANGE_MAX, STOP, ARC) is False
+    scan[90] = 99.0   # above range_max
     assert obstacle_in_front(scan, ANGLE_MIN, ANGLE_INC,
                              RANGE_MIN, RANGE_MAX, STOP, ARC) is False
 
