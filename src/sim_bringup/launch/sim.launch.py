@@ -18,18 +18,20 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable
+from launch.actions import (
+    DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable)
 from launch.conditions import IfCondition, UnlessCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description() -> LaunchDescription:
-    pkg = get_package_share_directory("sim_bringup")
-    repo_root = os.path.abspath(os.path.join(pkg, "..", "..", "..", ".."))
-    models_path = os.path.join(repo_root, "models")
-    worlds_path = os.path.join(repo_root, "worlds")
+    pkg_share = get_package_share_directory("sim_bringup")
+    models_path = os.path.join(pkg_share, "models")
+    worlds_path = os.path.join(pkg_share, "worlds")
+    world_sdf = os.path.join(worlds_path, "warehouse.sdf")
 
     world = LaunchConfiguration("world")
     gui = LaunchConfiguration("gui")
@@ -46,18 +48,23 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("gui", default_value="true"),
         DeclareLaunchArgument("teleop", default_value="false"),
         DeclareLaunchArgument("robot", default_value="diffbot"),
-        SetEnvironmentVariable("GZ_SIM_RESOURCE_PATH",
-                               f"{models_path}:{worlds_path}"),
+        SetEnvironmentVariable(
+            "GZ_SIM_RESOURCE_PATH",
+            f"{models_path}:{worlds_path}:{os.environ.get('GZ_SIM_RESOURCE_PATH', '')}"),
 
-        Node(
-            package="ros_gz_sim", executable="gz_sim", output="screen",
-            arguments=[[worlds_path, "/", world, ".sdf"], "-r"],
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(
+                get_package_share_directory("ros_gz_sim"),
+                "launch", "gz_sim.launch.py")),
+            launch_arguments={"gz_args": [world_sdf, " -r"]}.items(),
             condition=IfCondition(gui),
         ),
-        Node(
-            package="ros_gz_sim", executable="gz_sim", output="screen",
-            arguments=[[worlds_path, "/", world, ".sdf"], "-r", "-s",
-                       "--headless-rendering"],
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(
+                get_package_share_directory("ros_gz_sim"),
+                "launch", "gz_sim.launch.py")),
+            launch_arguments={
+                "gz_args": [world_sdf, " -r -s --headless-rendering"]}.items(),
             condition=UnlessCondition(gui),
         ),
         Node(
@@ -69,7 +76,7 @@ def generate_launch_description() -> LaunchDescription:
             package="ros_gz_sim", executable="create", output="screen",
             arguments=["-world", world, "-name", robot,
                        "-file", [models_path, "/", robot, "/model.sdf"],
-                       "-x", "0", "-y", "0", "-z", "0.1"],
+                       "-x", "0", "-y", "0", "-z", "0.05"],
         ),
         Node(
             package="scene_spawner", executable="spawner_node",
@@ -89,9 +96,4 @@ def generate_launch_description() -> LaunchDescription:
     ])
 
 
-# > Note (from task brief, resolve on the ROS box): `ros_gz_sim`'s
-# > launch-friendly entry is normally the included `gz_sim.launch.py`. If
-# > executable="gz_sim" is not resolvable on the ROS box, replace the Gazebo
-# > `Node`(s) with an `IncludeLaunchDescription` of
-# > os.path.join(get_package_share_directory("ros_gz_sim"), "launch",
-# > "gz_sim.launch.py") passing `gz_args`. Confirm in Step 3 and adjust.
+# > Note: resolved: Gazebo is started via the ros_gz_sim gz_sim.launch.py include.
