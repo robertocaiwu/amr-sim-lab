@@ -41,15 +41,24 @@ in dependency order. Tick them off as you go.
       errors (`gz-sim-diff-drive-system`, `gz-sim-joint-state-publisher-system`,
       `gpu_lidar`). It should rest level on its two wheels + frictionless caster.
 
-## 3. Bridge (the critical wiring — reviewed as broken pre-fix, fixed but unverified)
+## 3. Bridge + spawn path
 
 - [ ] `ros2 launch sim_bringup sim.launch.py` comes up: Gazebo GUI + warehouse + diffbot
       + ~8 carts.
-- [ ] `ros2 service list | grep world` shows `/world/warehouse/create` and
-      `/world/warehouse/remove` (the service-bridge entries added to `bridge.yaml`).
-      **If they are absent**, this `ros_gz_bridge` build does not support service entries
-      in the YAML — run a second `parameter_bridge` for services, or bridge them
-      another way. Without this, every spawn returns "Gazebo create service unavailable".
+- [ ] **Cart spawn.** `ros_gz_bridge parameter_bridge` bridges topics only on the
+      current release (its config parser rejects service entries — you will see two
+      harmless `[BridgeConfig] Could not parse entry` errors, now that the service
+      lines are gone from `bridge.yaml` they should not appear). `scene_spawner`
+      therefore calls Gazebo directly via the **`gz service` CLI**:
+      - `gz service -l | grep world` must list `/world/warehouse/create` + `/remove`.
+      - `scene_spawner` log should read `startup spawn: placed 8 'cart' entities`.
+      - Manual equivalent of what the node runs:
+        `gz service -s /world/warehouse/create --reqtype gz.msgs.EntityFactory --reptype gz.msgs.Boolean --timeout 3000 --req 'sdf: "<sdf version=\"1.10\"><include><name>c1</name><uri>model://cart</uri><pose>2 2 0 0 0 0</pose></include></sdf>"'`
+        → `data: true` and a cart appears.
+      - If that returns `data: false` / nothing: the gz **server** can't resolve
+        `model://cart` — check `GZ_SIM_RESOURCE_PATH` in the gz server's environment
+        (`ros2 launch` sets it, but confirm the `models/` tree installed to
+        `install/sim_bringup/share/sim_bringup/models/cart/model.sdf`).
 - [ ] `gz topic -l | grep -Ei 'diffbot|scan|odom|cmd_vel|tf'` — confirm the real gz
       topic names. `bridge.yaml` assumes DiffDrive's **gz-default scoped** names
       (`/model/diffbot/cmd_vel`, `/model/diffbot/odometry`, `/model/diffbot/tf`) now

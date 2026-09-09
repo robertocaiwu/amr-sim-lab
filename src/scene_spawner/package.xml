@@ -13,9 +13,10 @@ Licensed under the Apache License, Version 2.0. See LICENSE.
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_srvs</exec_depend>
-  <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>ros_gz_interfaces</exec_depend>
   <exec_depend>scene_spawner_interfaces</exec_depend>
+  <!-- Runtime: the `gz` CLI (gz-tools, from gz-harmonic) — scene_spawner
+       calls /world/<world>/create and /remove via `gz service`. -->
+  <exec_depend>ros_gz_sim</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

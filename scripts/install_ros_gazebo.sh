@@ -38,7 +38,6 @@ sudo apt-get install -y --no-install-recommends \
     ros-humble-ros-base \
     gz-harmonic \
     ros-humble-ros-gzharmonic \
-    ros-humble-ros-gz-sim \
     ros-humble-teleop-twist-keyboard \
     ros-humble-rmw-cyclonedds-cpp \
     python3-colcon-common-extensions \

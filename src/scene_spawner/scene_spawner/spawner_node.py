@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import shutil
+import subprocess
 import threading
 import time
 
@@ -23,13 +25,18 @@ import rclpy
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
-from ros_gz_interfaces.msg import Entity
-from ros_gz_interfaces.srv import DeleteEntity, SpawnEntity
 from std_srvs.srv import Trigger
 
 from scene_spawner.layout_generator import InvalidArea, LayoutParams, generate_layout
 from scene_spawner.sdf_templates import include_spawn_sdf
 from scene_spawner_interfaces.srv import SpawnLayout
+
+# The create/remove entry points are Gazebo Transport services, not ROS
+# services. `ros_gz_bridge`'s parameter_bridge only bridges topics (its
+# config parser rejects service entries), so this node talks to Gazebo
+# directly through the `gz service` CLI, which shares the transport bus
+# with the simulator when both run in the same environment.
+_GZ_REQ_TIMEOUT_MS = "3000"
 
 
 class SpawnerNode(Node):
@@ -53,11 +60,6 @@ class SpawnerNode(Node):
         self._create_name = f"/world/{world}/create"
         self._remove_name = f"/world/{world}/remove"
 
-        self._create_cli = self.create_client(
-            SpawnEntity, self._create_name, callback_group=self._cb)
-        self._remove_cli = self.create_client(
-            DeleteEntity, self._remove_name, callback_group=self._cb)
-
         self._lock = threading.Lock()
         self._spawned: list[str] = []
 
@@ -75,26 +77,45 @@ class SpawnerNode(Node):
 
     # -- helpers ---------------------------------------------------------
 
-    def _wait_for_create(self) -> bool:
-        """True once the create service is usable.
-
-        Prefer ``wait_for_service``, but fall back to a graph-name check.
-        ros_gz bridged service servers frequently do not register with
-        ``rcl_service_server_is_available`` even when they are fully
-        functional, so a hard failure on ``wait_for_service`` alone would
-        wrongly block every spawn.
-        """
+    def _gz_available(self) -> bool:
+        """True once the Gazebo create service is advertised on the bus."""
+        if shutil.which("gz") is None:
+            self.get_logger().error("`gz` CLI not found on PATH")
+            return False
         timeout = float(self.get_parameter("create_timeout_sec").value)
         deadline = time.monotonic() + max(timeout, 0.5)
         while time.monotonic() < deadline:
-            if self._create_cli.wait_for_service(timeout_sec=0.5):
+            try:
+                out = subprocess.run(
+                    ["gz", "service", "-l"],
+                    capture_output=True, text=True, timeout=5.0)
+            except (subprocess.TimeoutExpired, OSError):
+                return False
+            if self._create_name in out.stdout:
                 return True
-            if self._create_name in dict(self.get_service_names_and_types()):
-                self.get_logger().warning(
-                    f"{self._create_name} is on the ROS graph but "
-                    "wait_for_service did not confirm it (common for ros_gz "
-                    "bridged services); proceeding with the call")
-                return True
+            time.sleep(0.5)
+        return False
+
+    @staticmethod
+    def _gz_string(value: str) -> str:
+        """Escape a value for a Gazebo Transport text-format string field."""
+        return value.replace("\\", "\\\\").replace('"', '\\"')
+
+    def _gz_request(self, service: str, req_type: str, req_body: str) -> bool:
+        cmd = ["gz", "service", "-s", service,
+               "--reqtype", req_type, "--reptype", "gz.msgs.Boolean",
+               "--timeout", _GZ_REQ_TIMEOUT_MS, "--req", req_body]
+        try:
+            out = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=10.0)
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            self.get_logger().warning(f"gz service {service} failed: {exc}")
+            return False
+        if "data: true" in out.stdout:
+            return True
+        detail = (out.stdout or out.stderr).strip().replace("\n", " ")
+        self.get_logger().warning(
+            f"gz service {service} did not confirm: {detail[:200]}")
         return False
 
     def _params_from_request(self, req: SpawnLayout.Request) -> LayoutParams:
@@ -116,35 +137,16 @@ class SpawnerNode(Node):
             seed=seed,
         )
 
-    def _call_sync(self, client, request, timeout_sec: float = 5.0):
-        """Call a service and block for the response without spinning.
-
-        Safe from inside a callback: this node runs on a MultiThreadedExecutor
-        with a ReentrantCallbackGroup, so the response is delivered by another
-        executor thread while this one waits.
-        """
-        future = client.call_async(request)
-        done = threading.Event()
-        future.add_done_callback(lambda _f: done.set())
-        if not done.wait(timeout_sec):
-            future.cancel()
-            return None
-        return future.result()
-
     def _spawn_one(self, name: str, x: float, y: float, yaw: float, uri: str) -> bool:
-        req = SpawnEntity.Request()
-        req.entity_factory.name = name
-        req.entity_factory.sdf = include_spawn_sdf(name, x, y, yaw, model_uri=uri)
-        req.entity_factory.allow_renaming = False
-        result = self._call_sync(self._create_cli, req)
-        return bool(result and result.success)
+        sdf = include_spawn_sdf(name, x, y, yaw, model_uri=uri)
+        return self._gz_request(
+            self._create_name, "gz.msgs.EntityFactory",
+            f'sdf: "{self._gz_string(sdf)}"')
 
     def _remove_one(self, name: str) -> bool:
-        req = DeleteEntity.Request()
-        req.entity.name = name
-        req.entity.type = Entity.MODEL
-        result = self._call_sync(self._remove_cli, req)
-        return bool(result and result.success)
+        return self._gz_request(
+            self._remove_name, "gz.msgs.Entity",
+            f'name: "{self._gz_string(name)}" type: MODEL')
 
     def _clear_locked(self) -> int:
         removed = 0
@@ -169,7 +171,7 @@ class SpawnerNode(Node):
             resp.message = "invalid area bounds"
             return resp
 
-        if not self._wait_for_create():
+        if not self._gz_available():
             resp.success = False
             resp.message = f"Gazebo create service {self._create_name} unavailable"
             return resp

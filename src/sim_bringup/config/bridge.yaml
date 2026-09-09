@@ -30,15 +30,8 @@
   gz_type_name: "gz.msgs.Pose_V"
   direction: GZ_TO_ROS
 
-# Gazebo create/remove are gz-transport services (gz-sim-user-commands-system).
-# World name is hard-coded here; a non-default world_name needs this file regenerated.
-# Confirm after launch: `ros2 service list | grep world`
-- service_name: "/world/warehouse/create"
-  ros_type_name: "ros_gz_interfaces/srv/SpawnEntity"
-  gz_req_type_name: "gz.msgs.EntityFactory"
-  gz_rep_type_name: "gz.msgs.Boolean"
-
-- service_name: "/world/warehouse/remove"
-  ros_type_name: "ros_gz_interfaces/srv/DeleteEntity"
-  gz_req_type_name: "gz.msgs.Entity"
-  gz_rep_type_name: "gz.msgs.Boolean"
+# NOTE: Gazebo create/remove are gz-transport *services*. ros_gz_bridge's
+# parameter_bridge only bridges topics on this release (its config parser
+# rejects service entries: "both ros_type_name and gz_type_name must be
+# set"), so scene_spawner calls `/world/<world>/create` and `/remove`
+# directly via the `gz service` CLI instead of through this bridge.
