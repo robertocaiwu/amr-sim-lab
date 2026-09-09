@@ -22,7 +22,8 @@ import threading
 import time
 
 import rclpy
-from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.callback_groups import (
+    MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup)
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from std_srvs.srv import Trigger
@@ -72,8 +73,12 @@ class SpawnerNode(Node):
 
         self._startup_done = False
         if bool(self.get_parameter("spawn_on_startup").value):
+            # Its own mutually-exclusive group: a repeating timer whose
+            # callback can take several seconds must not overlap itself
+            # (that caused clear+respawn churn on startup).
             self._startup_timer = self.create_timer(
-                2.0, self._startup_spawn_once, callback_group=self._cb)
+                2.0, self._startup_spawn_once,
+                callback_group=MutuallyExclusiveCallbackGroup())
 
     # -- helpers ---------------------------------------------------------
 
