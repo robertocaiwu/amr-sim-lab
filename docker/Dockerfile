@@ -14,8 +14,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update && apt-get install -y --no-install-recommends \
         gz-harmonic \
         ros-humble-ros-gzharmonic \
-        ros-humble-ros-gzharmonic-sim \
-        ros-humble-ros-gz-sim \
         ros-humble-teleop-twist-keyboard \
         ros-humble-rmw-cyclonedds-cpp \
         python3-colcon-common-extensions \
@@ -25,7 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-WORKDIR /ws
+WORKDIR /workspace
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
