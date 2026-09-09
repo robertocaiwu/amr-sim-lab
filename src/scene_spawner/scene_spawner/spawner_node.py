@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import threading
+import time
 
 import rclpy
 from rclpy.callback_groups import ReentrantCallbackGroup
@@ -67,15 +68,34 @@ class SpawnerNode(Node):
             Trigger, "~/clear_layout", self._on_clear_layout,
             callback_group=self._cb)
 
+        self._startup_done = False
         if bool(self.get_parameter("spawn_on_startup").value):
             self._startup_timer = self.create_timer(
-                1.0, self._startup_spawn_once, callback_group=self._cb)
+                2.0, self._startup_spawn_once, callback_group=self._cb)
 
     # -- helpers ---------------------------------------------------------
 
     def _wait_for_create(self) -> bool:
+        """True once the create service is usable.
+
+        Prefer ``wait_for_service``, but fall back to a graph-name check.
+        ros_gz bridged service servers frequently do not register with
+        ``rcl_service_server_is_available`` even when they are fully
+        functional, so a hard failure on ``wait_for_service`` alone would
+        wrongly block every spawn.
+        """
         timeout = float(self.get_parameter("create_timeout_sec").value)
-        return self._create_cli.wait_for_service(timeout_sec=timeout)
+        deadline = time.monotonic() + max(timeout, 0.5)
+        while time.monotonic() < deadline:
+            if self._create_cli.wait_for_service(timeout_sec=0.5):
+                return True
+            if self._create_name in dict(self.get_service_names_and_types()):
+                self.get_logger().warning(
+                    f"{self._create_name} is on the ROS graph but "
+                    "wait_for_service did not confirm it (common for ros_gz "
+                    "bridged services); proceeding with the call")
+                return True
+        return False
 
     def _params_from_request(self, req: SpawnLayout.Request) -> LayoutParams:
         count = req.count if req.count > 0 else int(
@@ -187,16 +207,22 @@ class SpawnerNode(Node):
         return resp
 
     def _startup_spawn_once(self) -> None:
-        self._startup_timer.cancel()
+        if self._startup_done:
+            return
         req = SpawnLayout.Request()
         req.count = 0            # -> default_count
         req.min_spacing = 0.0    # -> default_min_spacing
         req.area_min_x = req.area_min_y = req.area_max_x = req.area_max_y = 0.0
         req.seed = int(self.get_parameter("startup_seed").value)
         req.model_name = ""
-        resp = SpawnLayout.Response()
-        resp = self._on_spawn_layout(req, resp)
-        self.get_logger().info(f"startup spawn: {resp.message}")
+        resp = self._on_spawn_layout(req, SpawnLayout.Response())
+        if resp.success:
+            self._startup_done = True
+            self._startup_timer.cancel()
+            self.get_logger().info(f"startup spawn: {resp.message}")
+        else:
+            self.get_logger().warning(
+                f"startup spawn not ready yet ({resp.message}); retrying")
 
 
 def main(args: list[str] | None = None) -> None:
