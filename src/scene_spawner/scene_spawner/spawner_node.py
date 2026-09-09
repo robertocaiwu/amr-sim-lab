@@ -96,25 +96,34 @@ class SpawnerNode(Node):
             seed=seed,
         )
 
+    def _call_sync(self, client, request, timeout_sec: float = 5.0):
+        """Call a service and block for the response without spinning.
+
+        Safe from inside a callback: this node runs on a MultiThreadedExecutor
+        with a ReentrantCallbackGroup, so the response is delivered by another
+        executor thread while this one waits.
+        """
+        future = client.call_async(request)
+        done = threading.Event()
+        future.add_done_callback(lambda _f: done.set())
+        if not done.wait(timeout_sec):
+            future.cancel()
+            return None
+        return future.result()
+
     def _spawn_one(self, name: str, x: float, y: float, yaw: float, uri: str) -> bool:
         req = SpawnEntity.Request()
         req.entity_factory.name = name
         req.entity_factory.sdf = include_spawn_sdf(name, x, y, yaw, model_uri=uri)
         req.entity_factory.allow_renaming = False
-        future = self._create_cli.call_async(req)
-        rclpy.spin_until_future_complete(
-            self, future, executor=self.executor, timeout_sec=5.0)
-        result = future.result()
+        result = self._call_sync(self._create_cli, req)
         return bool(result and result.success)
 
     def _remove_one(self, name: str) -> bool:
         req = DeleteEntity.Request()
         req.entity.name = name
         req.entity.type = Entity.MODEL
-        future = self._remove_cli.call_async(req)
-        rclpy.spin_until_future_complete(
-            self, future, executor=self.executor, timeout_sec=5.0)
-        result = future.result()
+        result = self._call_sync(self._remove_cli, req)
         return bool(result and result.success)
 
     def _clear_locked(self) -> int:
@@ -133,16 +142,16 @@ class SpawnerNode(Node):
         uri = f"model://{model}"
         params = self._params_from_request(req)
 
-        if not self._wait_for_create():
-            resp.success = False
-            resp.message = f"Gazebo create service {self._create_name} unavailable"
-            return resp
-
         try:
             placements = generate_layout(params, name_prefix=model)
         except InvalidArea:
             resp.success = False
             resp.message = "invalid area bounds"
+            return resp
+
+        if not self._wait_for_create():
+            resp.success = False
+            resp.message = f"Gazebo create service {self._create_name} unavailable"
             return resp
 
         with self._lock:
