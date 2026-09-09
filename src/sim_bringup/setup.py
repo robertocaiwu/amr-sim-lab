@@ -29,7 +29,9 @@ def _recursive_data_files(dest_subdir, src_dir):
         rel = os.path.relpath(root, abs_src)
         dest = os.path.join("share", package_name, dest_subdir) if rel == "." \
             else os.path.join("share", package_name, dest_subdir, rel)
-        out.append((dest, [os.path.join(root, f) for f in files]))
+        # Source paths MUST be relative to setup.py directory
+        file_paths = [os.path.relpath(os.path.join(root, f), here) for f in files]
+        out.append((dest, file_paths))
     return out
 
 
@@ -39,8 +41,9 @@ data_files = [
     ('share/' + package_name + '/launch', [
         'launch/spawner_only.launch.py', 'launch/sim.launch.py']),
     ('share/' + package_name + '/config', [
-        'config/bridge.yaml', 'config/layout.yaml']),
+        'config/bridge.yaml', 'config/layout.yaml'])
 ]
+
 data_files += _recursive_data_files("models", "../../models")
 data_files += _recursive_data_files("worlds", "../../worlds")
 
