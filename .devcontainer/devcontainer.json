@@ -5,8 +5,8 @@
   "mounts": [
     "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind"
   ],
-  "workspaceFolder": "/ws",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/ws,type=bind",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
   "customizations": {
     "vscode": {
       "extensions": ["ms-python.python", "ms-iot.vscode-ros"]
