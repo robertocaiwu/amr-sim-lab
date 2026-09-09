@@ -28,7 +28,7 @@ AREA = (-4.0, -4.0, 4.0, 4.0)
 
 def _params(**kw):
     base = dict(count=6, area=AREA, min_spacing=1.0, footprint_radius=0.5,
-               yaw_jitter=True, seed=1)
+                yaw_jitter=True, seed=1)
     base.update(kw)
     return LayoutParams(**base)
 

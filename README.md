@@ -12,7 +12,7 @@ The project is an exploration of procedural scene generation for mobile-robot
 simulation. It is deliberately seamed so that a **Phase 2** port of the same
 ideas to NVIDIA Isaac Sim + OpenUSD + Replicator is a follow-up.
 
-![demo](docs/images/demo.gif)
+<!-- TODO: add docs/images/demo.gif (screen recording of a spawn + drive) -->
 
 ## Architecture
 

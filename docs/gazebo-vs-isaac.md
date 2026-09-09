@@ -59,8 +59,9 @@ as they are made. Not exhaustive; corrected as understanding improves.
 ## ROS bridge: `ros_gz_bridge` vs Isaac Sim ROS 2 bridge
 
 - **Gazebo** uses `ros_gz_bridge`'s **`parameter_bridge`**, configured here by
-  `config/bridge.yaml` — a YAML list of `{ros_topic, gz_topic, ros_type,
-  gz_type, direction}` entries, one process bridging gz transport ↔ DDS.
+  `config/bridge.yaml` — a YAML list of `{ros_topic_name, gz_topic_name,
+  ros_type_name, gz_type_name, direction}` entries, one process bridging gz
+  transport ↔ DDS.
 - **Isaac Sim** uses the **Isaac Sim ROS 2 bridge** extension: publishers and
   subscribers are **OmniGraph nodes** wired in an action graph on the stage,
   reading/writing USD attributes directly.

@@ -37,7 +37,6 @@ def test_pure_modules_have_no_ros_imports():
     pkg = pathlib.Path(__file__).resolve().parents[1] / "scene_spawner"
     for mod in PURE_MODULES:
         path = pkg / mod
-        if not path.exists():
-            continue
+        assert path.exists(), f"{mod} missing"
         offending = _imported_names(path.read_text()) & FORBIDDEN
         assert not offending, f"{mod} imports {offending}"

@@ -14,35 +14,49 @@
 
 """Integration test: spawn_layout places N carts, clear_layout removes them.
 
-Requires Gazebo Harmonic on PATH. Skipped automatically if `gz` is absent.
+Needs Gazebo Harmonic and a built + sourced workspace. Run it via
+`make test-integration` / `colcon test`, not `make test`. `setUpClass` starts
+`spawner_only.launch.py` as a subprocess and skips the test if it does not come
+up; it is skipped outright when `gz` is not on PATH.
 """
 
 import shutil
+import subprocess
 import time
 import unittest
 
-import pytest
 import rclpy
 from std_srvs.srv import Trigger
 
 from scene_spawner_interfaces.srv import SpawnLayout
 
-GZ = shutil.which("gz")
 
-
-@pytest.mark.skipif(GZ is None, reason="Gazebo (gz) not installed")
 class TestSpawnRoundTrip(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        if shutil.which("gz") is None:
+            raise unittest.SkipTest("Gazebo (gz) not installed")
         rclpy.init()
-        cls.node = rclpy.create_node("integration_test_client")
-        # Assumes `ros2 launch sim_bringup spawner_only.launch.py` is already
-        # running (the Makefile target / CI job starts it); or use
-        # launch_testing to own the process. See launch_testing variant below.
+        cls.node = rclpy.create_node("spawn_integration_client")
+        cls.proc = subprocess.Popen(
+            ["ros2", "launch", "sim_bringup", "spawner_only.launch.py"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cls.spawn_cli = cls.node.create_client(
+            SpawnLayout, "/scene_spawner/spawn_layout")
+        cls.clear_cli = cls.node.create_client(
+            Trigger, "/scene_spawner/clear_layout")
+        if not cls.spawn_cli.wait_for_service(timeout_sec=40.0):
+            cls.proc.terminate()
+            raise unittest.SkipTest("spawner_only.launch.py did not come up in 40s")
 
     @classmethod
     def tearDownClass(cls):
+        cls.proc.terminate()
+        try:
+            cls.proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            cls.proc.kill()
         cls.node.destroy_node()
         rclpy.shutdown()
 
@@ -54,26 +68,17 @@ class TestSpawnRoundTrip(unittest.TestCase):
         return future.result()
 
     def test_spawn_then_clear(self):
-        spawn = self.node.create_client(SpawnLayout, "/scene_spawner/spawn_layout")
-        clear = self.node.create_client(Trigger, "/scene_spawner/clear_layout")
-
         req = SpawnLayout.Request()
         req.count = 5
         req.seed = 1
         req.min_spacing = 1.0
-        req.area_min_x, req.area_min_y, req.area_max_x, req.area_max_y = -3.0, -3.0, 3.0, 3.0
-        resp = self._call(spawn, req)
+        req.area_min_x, req.area_min_y, req.area_max_x, req.area_max_y = \
+            -3.0, -3.0, 3.0, 3.0
+        resp = self._call(self.spawn_cli, req)
         self.assertTrue(resp.success)
         self.assertEqual(resp.placed, 5)
         self.assertEqual(len(resp.entity_names), 5)
 
         time.sleep(1.0)
-        cresp = self._call(clear, Trigger.Request())
+        cresp = self._call(self.clear_cli, Trigger.Request())
         self.assertTrue(cresp.success)
-
-
-# launch_testing variant (preferred if `ros_gz_sim` launch integration is
-# confirmed in Task 8): wrap the above with `launch_testing.main`, having
-# `generate_test_description()` `IncludeLaunchDescription(spawner_only.launch.py)`
-# + `ReadyToTest()`, so the test owns Gazebo's lifecycle. Use whichever the ROS
-# box shows to be reliable; document the choice in a module docstring.
