@@ -7,13 +7,13 @@
   direction: GZ_TO_ROS
 
 - ros_topic_name: "/cmd_vel"
-  gz_topic_name: "/model/diffbot/cmd_vel"        # confirm with: gz topic -l
+  gz_topic_name: "/model/diffbot/cmd_vel"        # gz-default scoped name (DiffDrive, no <topic> override); confirm: gz topic -l
   ros_type_name: "geometry_msgs/msg/Twist"
   gz_type_name: "gz.msgs.Twist"
   direction: ROS_TO_GZ
 
 - ros_topic_name: "/odom"
-  gz_topic_name: "/model/diffbot/odometry"       # confirm with: gz topic -l
+  gz_topic_name: "/model/diffbot/odometry"       # gz-default scoped name (DiffDrive, no <topic> override); confirm: gz topic -l
   ros_type_name: "nav_msgs/msg/Odometry"
   gz_type_name: "gz.msgs.Odometry"
   direction: GZ_TO_ROS
@@ -25,7 +25,20 @@
   direction: GZ_TO_ROS
 
 - ros_topic_name: "/tf"
-  gz_topic_name: "/model/diffbot/tf"             # confirm with: gz topic -l
+  gz_topic_name: "/model/diffbot/tf"             # gz-default scoped name (DiffDrive, no <topic> override); confirm: gz topic -l
   ros_type_name: "tf2_msgs/msg/TFMessage"
   gz_type_name: "gz.msgs.Pose_V"
   direction: GZ_TO_ROS
+
+# Gazebo create/remove are gz-transport services (gz-sim-user-commands-system).
+# World name is hard-coded here; a non-default world_name needs this file regenerated.
+# Confirm after launch: `ros2 service list | grep world`
+- service_name: "/world/warehouse/create"
+  ros_type_name: "ros_gz_interfaces/srv/SpawnEntity"
+  gz_req_type_name: "gz.msgs.EntityFactory"
+  gz_rep_type_name: "gz.msgs.Boolean"
+
+- service_name: "/world/warehouse/remove"
+  ros_type_name: "ros_gz_interfaces/srv/DeleteEntity"
+  gz_req_type_name: "gz.msgs.Entity"
+  gz_rep_type_name: "gz.msgs.Boolean"
