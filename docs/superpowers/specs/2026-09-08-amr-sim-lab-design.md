@@ -5,6 +5,18 @@
 **Repo:** `amr-sim-lab` (root: `/workspace/simulation`)
 **License:** Apache-2.0
 
+> **Implementation note (added 2026-09-09, during execution):** three design
+> points changed during implementation; the sections below are not yet
+> rewritten to match:
+> - **Robot:** the spec calls for Dolly (§2, §4.3). Dolly's maintained branch
+>   targets ROS 2 Galactic / Ignition Fortress and does not load on Gazebo
+>   Harmonic, so the implementation uses a self-contained `models/diffbot/`
+>   SDF (differential drive + `gpu_lidar`) — the fallback §2 anticipated. No
+>   third-party robot is vendored; there is no submodule.
+> - **Cart mesh:** the cart (§4.2) uses primitive box/cylinder geometry, not a
+>   glTF mesh. USD conversion for Phase 2 still works with primitives.
+> - **NOTICE:** carries no third-party attribution (nothing is vendored).
+
 ---
 
 ## 1. Purpose

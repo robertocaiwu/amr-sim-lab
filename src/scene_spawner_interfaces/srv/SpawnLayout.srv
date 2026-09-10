@@ -1,0 +1,16 @@
+# Request
+int32   count            # carts to place; 0 => node default
+float64 area_min_x        # grid bounds (metres, world frame)
+float64 area_min_y
+float64 area_max_x
+float64 area_max_y
+float64 min_spacing       # centre-to-centre minimum; 0 => node default
+int32   seed              # RNG seed; negative => nondeterministic
+string  model_name        # spawnable model; "" => node default
+---
+# Response
+bool         success
+string       message
+int32        requested
+int32        placed
+string[]     entity_names

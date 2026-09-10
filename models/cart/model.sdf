@@ -1,0 +1,36 @@
+<?xml version="1.0" ?>
+<!-- Copyright 2026 amr-sim-lab contributors. Apache-2.0. See LICENSE. -->
+<sdf version="1.10">
+  <model name="cart">
+    <link name="body">
+      <inertial>
+        <mass>20.0</mass>
+        <inertia>
+          <ixx>1.2</ixx><iyy>1.7</iyy><izz>2.4</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+        </inertia>
+      </inertial>
+      <collision name="deck">
+        <pose>0 0 0.5 0 0 0</pose>
+        <geometry><box><size>0.8 0.5 0.1</size></box></geometry>
+      </collision>
+      <visual name="deck">
+        <pose>0 0 0.5 0 0 0</pose>
+        <geometry><box><size>0.8 0.5 0.1</size></box></geometry>
+        <material><ambient>0.2 0.3 0.6 1</ambient><diffuse>0.2 0.3 0.6 1</diffuse></material>
+      </visual>
+      <visual name="post_fl"><pose>0.35 0.2 0.25 0 0 0</pose>
+        <geometry><cylinder><radius>0.02</radius><length>0.5</length></cylinder></geometry></visual>
+      <visual name="post_fr"><pose>0.35 -0.2 0.25 0 0 0</pose>
+        <geometry><cylinder><radius>0.02</radius><length>0.5</length></cylinder></geometry></visual>
+      <visual name="post_bl"><pose>-0.35 0.2 0.25 0 0 0</pose>
+        <geometry><cylinder><radius>0.02</radius><length>0.5</length></cylinder></geometry></visual>
+      <visual name="post_br"><pose>-0.35 -0.2 0.25 0 0 0</pose>
+        <geometry><cylinder><radius>0.02</radius><length>0.5</length></cylinder></geometry></visual>
+      <collision name="legs">
+        <pose>0 0 0.25 0 0 0</pose>
+        <geometry><box><size>0.7 0.4 0.5</size></box></geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>

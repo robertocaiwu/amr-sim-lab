@@ -1,0 +1,15 @@
+# Copyright 2026 amr-sim-lab contributors
+# Licensed under the Apache License, Version 2.0. See LICENSE.
+#
+# Canonical scene definition. Phase 2 (Isaac Sim) tooling reads this file too.
+/scene_spawner:
+  ros__parameters:
+    world_name: warehouse
+    default_count: 3
+    default_area: [-5.0, -5.0, 5.0, 5.0]
+    default_min_spacing: 1.0
+    default_model: cart
+    cart_footprint_radius: 0.5
+    spawn_on_startup: true
+    startup_seed: 0
+    create_timeout_sec: 10.0
