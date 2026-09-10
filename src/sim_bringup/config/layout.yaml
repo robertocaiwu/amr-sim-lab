@@ -5,7 +5,7 @@
 /scene_spawner:
   ros__parameters:
     world_name: warehouse
-    default_count: 8
+    default_count: 3
     default_area: [-5.0, -5.0, 5.0, 5.0]
     default_min_spacing: 1.0
     default_model: cart
